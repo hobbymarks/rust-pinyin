@@ -109,3 +109,4 @@ Cargo.lock
 **/*.rs.bk
 
 # End of https://www.gitignore.io/api/rust,code,intellij+all
+pinyin-data
