@@ -17,10 +17,8 @@ fn main() -> io::Result<()> {
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
         let line = line?;
-        for opt_pinyin in line.as_str().to_pinyin() {
-            if let Some(pinyin) = opt_pinyin {
-                chars.extend(pinyin.with_tone().chars());
-            }
+        for opt_pinyin in line.as_str().to_pinyin().flatten() {
+            chars.extend(opt_pinyin.with_tone().chars());
         }
     }
     let mut stdout = StandardStream::stdout(ColorChoice::Auto);

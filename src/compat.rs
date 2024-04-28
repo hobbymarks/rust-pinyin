@@ -2,7 +2,6 @@
 
 use crate::{Pinyin, ToPinyin, ToPinyinMulti};
 use std::collections::HashSet;
-use std::convert::identity;
 
 /// 拼音风格
 #[deprecated = "请使用 `Pinyin` 的方法代替"]
@@ -120,7 +119,7 @@ pub fn pinyin(s: &str, a: &Args) -> Vec<Vec<String>> {
 #[deprecated = "请使用 `ToPinyin` 代替"]
 pub fn lazy_pinyin(s: &str, a: &Args) -> Vec<String> {
     s.to_pinyin()
-        .filter_map(identity)
+        .flatten()
         .map(|pinyin| apply_style(pinyin, &a.style).to_string())
         .collect()
 }

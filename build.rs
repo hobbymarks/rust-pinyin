@@ -160,7 +160,7 @@ const STYLES: &[Style] = &[
                 result.push(ch);
             }
             if tone > 0 {
-                result.push(TONE_NUMS[usize::try_from(tone).unwrap()]);
+                result.push(TONE_NUMS[tone as usize]);
             }
         }
         result.into()
@@ -176,7 +176,7 @@ const STYLES: &[Style] = &[
             }
             if tone > 0 {
                 assert!(output_tone.is_none());
-                output_tone = Some(TONE_NUMS[usize::try_from(tone).unwrap()]);
+                output_tone = Some(TONE_NUMS[tone as usize]);
             }
         }
         if let Some(tone) = output_tone {
@@ -193,7 +193,7 @@ fn generate_pinyin_data(data: &InputData) -> io::Result<PinyinDataIndex> {
     let mut process_pinyin = |pinyin| {
         let index = pinyin_data.len();
         match pinyin_data.entry(pinyin) {
-            Entry::Occupied(_) => return Ok(()),
+            Entry::Occupied(_) => return Ok::<(), io::Error>(()),
             Entry::Vacant(entry) => {
                 entry.insert(index);
             }
@@ -221,9 +221,8 @@ fn generate_pinyin_data(data: &InputData) -> io::Result<PinyinDataIndex> {
     // 插入一个空的拼音数据作为零位
     process_pinyin("")?;
     data.iter()
-        .flat_map(|(_, list)| list.iter().map(|s| *s))
-        .map(process_pinyin)
-        .collect::<io::Result<()>>()?;
+        .flat_map(|(_, list)| list.iter().copied())
+        .try_for_each(process_pinyin)?;
     writeln!(output, "]")?;
     Ok(pinyin_data)
 }
@@ -239,29 +238,27 @@ fn generate_heteronym_table(
     writeln!(output, "&[")?;
     writeln!(output, "    &[],")?;
     heteronym_list_index.insert(vec![].into_boxed_slice(), 0);
-    data.iter()
-        .map(|(code, list)| {
-            let list = list[1..]
-                .iter()
-                .map(|pinyin| *index.get(pinyin).unwrap())
-                .collect::<Box<[_]>>();
-            let new_idx = heteronym_list_index.len();
-            let idx = match heteronym_list_index.entry(list) {
-                Entry::Occupied(entry) => *entry.get(),
-                Entry::Vacant(entry) => {
-                    write!(output, "    &[")?;
-                    for i in entry.key().iter() {
-                        write!(output, "{}, ", i)?;
-                    }
-                    writeln!(output, "],")?;
-                    entry.insert(new_idx);
-                    new_idx
+    data.iter().try_for_each(|(code, list)| {
+        let list = list[1..]
+            .iter()
+            .map(|pinyin| *index.get(pinyin).unwrap())
+            .collect::<Box<[_]>>();
+        let new_idx = heteronym_list_index.len();
+        let idx = match heteronym_list_index.entry(list) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                write!(output, "    &[")?;
+                for i in entry.key().iter() {
+                    write!(output, "{}, ", i)?;
                 }
-            };
-            heteronym_index.insert(*code, idx);
-            Ok(())
-        })
-        .collect::<io::Result<()>>()?;
+                writeln!(output, "],")?;
+                entry.insert(new_idx);
+                new_idx
+            }
+        };
+        heteronym_index.insert(*code, idx);
+        Ok::<(), io::Error>(())
+    })?;
     writeln!(output, "]")?;
     Ok(heteronym_index)
 }
@@ -329,7 +326,7 @@ fn generate_char_table(
 
 fn create_out_file(name: &str) -> io::Result<impl Write> {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join(name);
-    Ok(BufWriter::new(File::create(&path)?))
+    Ok(BufWriter::new(File::create(path)?))
 }
 
 #[cfg(any(

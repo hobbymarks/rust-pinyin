@@ -1,6 +1,5 @@
 use crate::data::PINYIN_DATA;
 use crate::{get_block_and_index, PinyinData};
-use std::convert::TryFrom;
 use std::str::Chars;
 
 /// 单个字符的拼音信息
@@ -108,11 +107,9 @@ impl ToPinyin for char {
     type Output = Option<Pinyin>;
 
     fn to_pinyin(&self) -> Option<Pinyin> {
-        get_block_and_index(*self).and_then(|(block, index)| {
-            match usize::try_from(block.data[index]).unwrap() {
-                0 => None,
-                idx => Some(Pinyin(&PINYIN_DATA[idx])),
-            }
+        get_block_and_index(*self).and_then(|(block, index)| match block.data[index] as usize {
+            0 => None,
+            idx => Some(Pinyin(&PINYIN_DATA[idx])),
         })
     }
 }
